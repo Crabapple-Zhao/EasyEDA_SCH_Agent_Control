@@ -1,0 +1,6 @@
+interface:
+  display_name: "EasyEDA Schematic"
+  short_description: "Draw and visually verify EasyEDA Pro schematics"
+  default_prompt: "Use $easyeda-schematic to draw or modify this EasyEDA schematic and verify the rendered result."
+policy:
+  allow_implicit_invocation: true
