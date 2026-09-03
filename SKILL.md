@@ -2,6 +2,7 @@
 name: easyeda-schematic
 description: Create, redraw, modify, audit, and visually verify EasyEDA Pro schematics through the Run API Gateway. Use for EasyEDA schematic-page work that requires page-bound placement, electrical checks, compact layout, power/GND conventions, or rendered-image QA. Do not use for PCB layout, generic circuit theory, or non-EasyEDA CAD tasks.
 metadata:
+  version: "1.0.1"
   short-description: Draw and verify EasyEDA schematics
 ---
 
@@ -9,9 +10,10 @@ metadata:
 
 Produce electrically correct, compact, readable EasyEDA Pro schematics and verify the actual rendered result before reporting completion.
 
-## Required References
+## Rule Source and Supporting References
 
-- Before schematic creation or modification, read `F:\Agent_Workspace\Codex\SCH_AI\原理图绘制规范.md` completely when it exists; otherwise read [references/schematic-standard.md](references/schematic-standard.md). The workspace standard has precedence.
+This skill contains the maintained drawing rules and acceptance checklist; no separate workstation drawing-standard file is required. Follow the user's current requirements and confirmed project conventions. Treat layout defaults as choices that serve electrical intent and readability, not as reasons to override a verified arrangement. When maintaining this skill, retain verified newer rules over conflicting legacy material and add only useful gaps.
+
 - Before live Gateway inspection or mutation, read [references/easyeda-gateway.md](references/easyeda-gateway.md).
 - When diagnosing a repeated visual, API, or connection symptom, read [references/failure-patterns.md](references/failure-patterns.md).
 
@@ -30,7 +32,7 @@ Identify the exact project, page, connected window, and requested mode before ac
 
 - Determine whether the target page is blank, contains content to preserve, or contains a failed attempt that is in scope to replace.
 - Enumerate and read all page text, notes, images, and callouts. Record constraints such as chemistry, voltage, current, isolation domain, configuration mode, population option, and NC requirements.
-- Query the page frame and title-block bounds before choosing coordinates. Keep all new content inside usable bounds.
+- Query the page frame and title-block bounds before choosing coordinates. Keep all new content inside usable bounds, including the full rendered extents of symbols, owned text, notes, and images rather than only their origin points.
 - Query existing components, pins, packages, attributes, wires, flags, and texts in the affected block; inspect the current render before mutation.
 - Verify device pin functions and required operating conditions against a local or authoritative datasheet. Do not substitute a familiar default for an explicit page note.
 - A user-designated reference page such as P15 may define target density, typography, and composition, but never copy its primitive IDs, wires, absolute coordinates, or contents into the target page without explicit authorization.
@@ -38,11 +40,25 @@ Identify the exact project, page, connected window, and requested mode before ac
 
 ### 2. Plan Around Pins and Local Loops
 
+- Default to left-to-right reading flow and align related pins and components to the working grid. Keep control and feedback branches near their pins, and distinguish functional groups with useful spacing. Electrical intent and readability take priority over symmetry or equal spacing.
 - Anchor the main IC, then form compact functional groups around its pin locations. Typical groups include input/decoupling/protection, switching node/diode/inductor, output or battery/sense/capacitors, status indicators, and regulator-reference decoupling.
+- Place key support parts close to the IC pins they directly connect, minimizing the pin-to-part-to-pin path before arranging the remaining branches and labels. For example, move R2 close to BAT and VS first, then organize C2 and C3 around the BAT/VS/GND nodes; a horizontal C2 can share C3's ground. Do not preserve a distant support-part position merely to follow existing rails or accept a smaller outer outline as sufficient compactness. Keep pin identities, electrical domains, and readable text clearance intact.
 - Choose each component orientation to align its pins with current flow and nearby IC pins. Same-class parts need not share a rotation when different orientations produce cleaner loops.
-- Treat “power above, GND below” as a visual hierarchy, not a requirement to draw page-wide rails. Avoid perimeter buses or large wire rectangles created only to satisfy that hierarchy.
-- Prefer a local native power or ground flag when it shortens routing and the electrical domain is unambiguous. Nearby connections may share one symbol only when they are exactly the same net and the result is clearer.
-- Reserve space for all owned text, a concise circuit-parameter note, and `PCB Layout Note:` before routing.
+- For a two-terminal part connecting two nearby nets, consider placing it directly in the free space between those nets instead of extending a separate branch beyond the block. For example, a horizontal freewheel diode can bridge a capacitor ground node and the LX rail, share the existing GND flag, and remove a downward detour. Reserve space for its native designator/value, adjust the local rail if needed, and preserve the exact pin-to-net polarity; shared ground is valid only within the same electrical domain.
+- Interpret “power above, GND below” within each local branch: the supply node is above its load or capacitor, and its ground return is below. This is a relative layout principle, not a mandatory symbol rotation or a requirement that every power flag sit above every GND flag. A horizontal VCC_BAT flag beside the BAT/C3 upper node, with C3 and its GND below, fully satisfies the principle; it is not an exception.
+- Join adjacent pins of exactly the same net at their nearest usable endpoints with a short straight segment, then place one native flag at an end junction (for example, below one of two downward GND pins). Do not extend both pins into a U merely to center the flag. For a shared side rail, place the flag on an existing pin-level endpoint when that removes a separate intermediate branch; for example, extend the pin 12 line directly to GND instead of adding a branch between pins 12 and 11. Keep the complete flag body and native name clear of unrelated routes; absence of a junction dot does not excuse visual contact.
+- For pins already confirmed to share a net, choose the main feed level together with the support-component and owned-text positions. For example, feeding the upper of two VIN pins and branching down to the lower can let the input capacitor move up, shorten its ground lead, and place its labels in the clear space between capacitor and IC. Compare the entire group rather than preserving the old trunk and arranging parts around it; the upper pin is a layout choice, not a universal rule.
+- Choose the flag orientation at the connected node that keeps the name readable and the connection short. Never add an upward detour, an avoidable crossing, or a perimeter rail merely to make a power symbol point upward. Keep a short finite lead where needed for reliable connection and symbol clearance.
+- Prefer a local native power or ground flag when it shortens routing and the electrical domain is unambiguous; share a symbol only for exactly the same net. Plan same-net supply connections for the whole local functional group before fixing individual flags. Nearby branches and an IC supply pin can share a short local rail; let each pin reach it along its axis where practical. For example, VIN and two indicator resistors can share an upper rail with one horizontal power flag at its end, removing separate supply stubs and the extra upward flag branch. Keep supply hierarchy clear and retain separate flags when sharing would introduce crossings, long routes across other groups, or ambiguous domains.
+- Space repeated branches using their complete rendered bounds, including native designators, values, and details such as LED emission arrows. Reduce column spacing while preserving readable clearance, and align each branch with its destination IC pin where useful; symbol-body spacing alone is not a sufficient clearance check.
+- Reserve space for all owned text and any useful circuit-parameter or `PCB Layout Note:` text before routing.
+- Apply circuit-specific grouping to the actual topology: keep LDO input/output capacitors near their respective pins and a fixed EN branch short; for a buck stage, group the input capacitor, switch, and required freewheel path compactly, then inductor/output capacitor. Make feedback pickup and its separation from switching nets clear. Derive any PCB routing requirements from the device documentation; schematic distance alone does not establish PCB loop quality.
+
+### Network Names and Domains
+
+- Preserve established project net names. For new names in the user's naming style, examples include `VCC_5V`, `VCC_3V3`, and isolated `VCC_5V_EX`; retain existing `VDD`, `VDDA`, or `VREF` where applicable. These examples do not authorize renaming an existing circuit.
+- Treat `GND`, `AGND`, `GND_EX`, and different supply domains as distinct nets; connect them only at an explicitly intended connection. Pair isolated supply and return domains correctly, and check that labels or shared flags do not bridge the isolation boundary.
+- Use native labels for cross-page, cross-block, or distant connections when they improve clarity. Avoid repeated labels in a small local net, and keep multiple local flags when consolidation would require detours or obscure functional grouping.
 
 ### 3. Draw or Modify Incrementally
 
@@ -60,23 +76,27 @@ Identify the exact project, page, connected window, and requested mode before ac
 ### 4. Place Flags and Owned Text
 
 - Keep each designator, value, and native net name at its library-default or clearly adjacent position. Resolve a collision by moving or shortening the wire first, then moving the whole owning component/flag or local group; move text alone only when its default placement is inherently unsuitable.
+- When a horizontal part has spare space beside its body but tight clearance to the nets above or below, place its native designator and value on opposite sides above the lead (for example, C4 on the left and 100nF on the right). Choose part position and text placement together: bring the part close to its owning IC pin, use the available lateral space, and keep both labels clearly associated with that part and clear of wires. Do not preserve a vertically stacked library layout when it crowds an adjacent net.
 - In this SCH_AI workspace, visible passive-component designators and values default to `0.1 inch` unless the user reference or established local style requires another size. Query the actual `fontSize`; do not leave isolated `0.0675 inch` text inside an otherwise `0.1 inch` functional block.
 - For a normal vertical GND, preserve the library-default orientation and placement when the render matches the standard. Its native `GND`, `AGND`, or `GND_EX` name must remain visible and visually centered beneath the symbol.
 - For a horizontal GND, rotate or move the parent flag as one object. The body must face open space away from the circuit, the wire must terminate at the pin without crossing the body, and the native horizontal name must sit outside the shortest stroke, centered on the symbol centerline with a small clear gap.
 - Query and render every created or relocated GND-family flag individually. A representative flag passing does not prove that another instance kept the same saved rotation, name visibility, or text position.
 - For horizontal power or net flags on an inline component, keep both names outside their vertical strokes, on the selected wire-relative baseline, with a small clear gap. Mirrored flags can require different serialized `Name.y` or `alignMode`; judge the rendered geometry, not coordinate equality.
-- Keep explanatory text concise: show only key operating parameters that prevent unnecessary datasheet lookup, followed when useful by a short PCB layout note.
+- Keep explanatory text concise: show only key operating parameters that prevent unnecessary datasheet lookup, followed when useful by a short PCB layout note. State relevant operating conditions and distinguish confirmed values from assumptions; do not repeat values already obvious on components or paste manual paragraphs.
+- Place a functional-block title below the block or in the user-designated location, with parameter notes in nearby free space. Keep both outside the main signal path and title block. Remove obsolete/test/duplicate titles introduced or superseded by the current edit.
+- When a PCB layout note is useful, end the parameter note with `PCB Layout Note:` and a few specific, documented placement, return-path, or sensitive-net requirements. Do not add generic filler merely to satisfy a template.
+- Include a datasheet image only when text cannot explain the needed detail clearly. Crop it to the relevant figure/table, identify the device and figure or source page, and keep it legible inside the frame. An image never substitutes for actual schematic connectivity.
 
 ### 5. Compactness Pass
 
 After the initial render, inspect the block as a composition:
 
 - compare its rendered bounding box with the functional content it contains;
-- find the longest horizontal and vertical wires and ask whether local grouping or flags can shorten them;
-- check part-to-pin distance for each support component;
+- find the longest horizontal and vertical wires and ask whether local grouping or flags can shorten them; inspect both group width and height: shorten excess rail-to-part and part-to-part leads as well as column spacing, preserving finite connections, pin-axis alignment, and useful text clearance;
+- check part-to-pin distance for each support component, especially parts connecting two related IC pins; shorten avoidable connecting paths before optimizing the outer outline;
 - inspect the input, switching, output/battery, status, and decoupling loop footprints;
 - remove avoidable perimeter rails or wires that travel around unrelated groups;
-- judge compactness by loop area, routing length, whitespace, and readability, not by symbol count alone.
+- judge compactness by loop area, routing length, whitespace, and readability, not by symbol count alone. A longer individual segment can improve the group when it enables a clear shared supply and removes separate flags or detours; do not optimize each segment in isolation.
 
 If a rail spans unrelated groups or encloses the block, redesign the local connections before saving.
 
@@ -92,6 +112,7 @@ If a rail spans unrelated groups or encloses the block, redesign the local conne
 - After all local regions pass, inspect one full-page render for frame/title-block clearance, composition, relative density, and missed outliers. The full-page render complements but never replaces the enlarged local checks.
 - Compare density, typography, orientation, alignment, and whitespace with the user's reference or designated benchmark page.
 - Run DRC where available and investigate fatal errors, especially coincident-but-unconnected endpoints.
+- Attribute DRC findings to their page and affected primitives. Inspect errors and new findings on the current page; defer warnings from untouched pages until those pages are in scope. Do not treat an aggregate warning count as a current-page result or change component parameters just to clear unrelated warnings.
 - Save only after electrical, structural, and visual checks pass. Requery saved state and render again when library, merge, or save behavior may have changed it.
 
 ## Acceptance Checklist

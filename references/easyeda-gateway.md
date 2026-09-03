@@ -24,13 +24,7 @@ Use the exact connected window ID. Do not reuse a stale ID after a reconnect wit
 
 Start the Bridge before EasyEDA whenever possible. Run API Gateway v1.0.5 scans ports `49620` through `49629` serially with a 1.5-second timeout per port. When no Bridge is present, one failed pass can take roughly 15 seconds; five passes plus retry delays can approach 90 seconds.
 
-On the `F:\Agent_Workspace\Codex\SCH_AI` workstation, the deterministic launcher is:
-
-```powershell
-F:\Agent_Workspace\Codex\SCH_AI\easyeda-api-skill\scripts\start-easyeda-bridge.ps1
-```
-
-The user logon task `Codex EasyEDA Bridge` may already call this launcher. Query an existing task before changing it. Creating, replacing, disabling, or deleting a startup task is an external system mutation and still requires the user's authorization.
+Use the Bridge launcher configured on the current workstation; discover its actual installed location rather than assuming a fixed workspace path. The Bridge runtime is an external prerequisite, not bundled with this skill. An existing logon task (for example `Codex EasyEDA Bridge`) may already start it. Query the existing configuration before changing it. Creating, replacing, disabling, or deleting a startup task is an external system mutation and still requires the user's authorization.
 
 The v1.0.5 reconnect implementation closes and immediately re-registers a fixed WebSocket ID. Repeated reconnect actions can keep invalidating an in-flight scan or race the previous close, so use this recovery sequence:
 
@@ -121,6 +115,8 @@ await eda.sch_PrimitiveWire.create(line, "", null, null, null);
 ```
 
 For a simple segment, pass a flat numeric geometry such as `[x1, y1, x2, y2]`. A nested point array such as `[[x1, y1], [x2, y2]]` failed in the current editor build. Requery the returned wire because connected segments may merge and the returned primitive ID may not survive.
+
+A merged wire returned by `getAll()` can contain a flat list of separate segment quadruples. Do not assume that serialized list is valid input to a single `create` call: a branched list failed in the verified editor build. Rebuild branched geometry with separate finite `[x1, y1, x2, y2]` create calls, then requery the merged result and surviving IDs.
 
 For an ordinary local wire, pass `""` or omit the net value from the first creation call. A non-empty internal `net` may be rendered by EasyEDA as blue text along the wire. It must not be used as invisible connectivity metadata.
 
