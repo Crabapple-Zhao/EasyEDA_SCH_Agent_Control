@@ -2,7 +2,7 @@
 name: easyeda-schematic
 description: Create, redraw, modify, audit, and visually verify EasyEDA Pro schematics through the Run API Gateway. Use for EasyEDA schematic-page work that requires page-bound placement, electrical checks, compact layout, power/GND conventions, or rendered-image QA. Do not use for PCB layout, generic circuit theory, or non-EasyEDA CAD tasks.
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   short-description: Draw and verify EasyEDA schematics
 ---
 
@@ -117,7 +117,9 @@ If a rail spans unrelated groups or encloses the block, redesign the local conne
 
 ## Acceptance Checklist
 
-Before reporting completion, all applicable items must pass:
+Apply acceptance criteria by task mode. In review/diagnose mode, completion means finishing the agreed inspection and providing evidence, findings, and any inspection limitations; discovering a defect does not prevent delivery of the review. Do not mutate or save a page merely to satisfy a drawing checklist. In drawing/modify mode, resolve issues within the requested scope and complete the electrical, structural, rendered, and saved-state checks below.
+
+Before reporting a drawing or modification complete, all applicable items must pass:
 
 - exact target page/window confirmed; unrelated content preserved;
 - every page note and constraint reconciled with the circuit;

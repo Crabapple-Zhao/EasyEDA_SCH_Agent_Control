@@ -85,6 +85,6 @@ easyeda-schematic/
 
 ## 版本
 
-当前版本：`v1.0.1`。变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：`v1.0.2`。变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 后续版本应在 Git 提交标题中包含版本号，并在提交正文中说明主要更新内容。
