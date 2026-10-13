@@ -104,7 +104,7 @@ In the current EasyEDA Pro API build, `sch_PrimitiveComponent.modify(id, partial
 - Prefer a narrower dedicated operation when one exists. Modify a value or label with `sch_PrimitiveAttribute.modify`; do not route that change through the parent component.
 - For a position or rotation change, an async component instance obtained from the complete queried object can preserve metadata more reliably: change only the required `setState_X`, `setState_Y`, or `setState_Rotation` field, call `done()`, then compare the full before/after component and owned-attribute snapshots. Do not assume this behavior for attribute instances, which use different coordinate conventions.
 - If component modify is unavoidable, preserve the complete verified metadata payload, then immediately requery `Value`, `Designator`, `Name`, footprint, supplier/manufacturer, datasheet fields, and rendered text before proceeding.
-- Treat any lost field as a failed mutation. Restore it before routing, saving, or moving another component.
+- Treat any lost field as a failed mutation. Restore it before routing, saving, or moving another component. Apply the same source/post-change metadata audit to copies, including full model, supplier part number, package, and specifications; reconcile intentional value changes using the selection rules in SKILL.md.
 
 ## First-Write Wire Rule
 
@@ -222,7 +222,7 @@ const blob = await eda.dmt_EditorControl.getCurrentRenderedAreaImage();
 return { type: blob.type, size: blob.size };
 ```
 
-Transfer or inspect the returned image using the host's available image-viewing mechanism. The model must actually look at the rendered result.
+Transfer or inspect the returned image using the host's available image-viewing mechanism. The model must actually look at the rendered result. For a user-designated reference, capture full-page and legible local views before drawing, then compare with the target at the same or demonstrably comparable scale as required by SKILL.md. Empty/default `fontSize` is not proof of effective typography; use like-text render comparison. Return to and re-identify the target page before any mutation.
 
 ### Mandatory Settled-Render Gate
 
